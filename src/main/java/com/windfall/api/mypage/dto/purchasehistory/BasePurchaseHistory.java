@@ -1,5 +1,6 @@
 package com.windfall.api.mypage.dto.purchasehistory;
 import com.windfall.api.chat.dto.response.info.ChatInfo;
+import com.windfall.domain.trade.enums.TradeStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import lombok.Getter;
@@ -14,7 +15,7 @@ import lombok.Getter;
 public abstract class BasePurchaseHistory {
 
   @Schema(description = "경매 상태")
-  private final String status;
+  private final TradeStatus status;
 
   @Schema(description = "경매 id")
   private final Long auctionId;
@@ -52,7 +53,7 @@ public abstract class BasePurchaseHistory {
   @Schema(description = "채팅 정보")
   private final ChatInfo chatInfo;
 
-  public BasePurchaseHistory(String status, Long auctionId, Long tradeId, Long sellerId,
+  public BasePurchaseHistory(TradeStatus status, Long auctionId, Long tradeId, Long sellerId,
       String sellername, String sellerProfileImage, String title, String auctionImageUrl,
       int startPrice, int endPrice, int discountPercent, LocalDate purchasedDate,
       Long roomId, int unreadCount) {
