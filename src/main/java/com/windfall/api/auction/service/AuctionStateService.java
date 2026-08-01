@@ -73,6 +73,14 @@ public class AuctionStateService {
     logAuctionChange(auction, oldPrice);
   }
 
+  @Transactional
+  public void decreasePrice(LocalDateTime now){
+    int failed = auctionRepository.setFailedAuctions(now);
+    int decreased = auctionRepository.decreasePrice(now);
+
+    log.info("Auction Scheduler Info : 유찰 - {}, 감소 - {}", failed, decreased);
+  }
+
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void completeAuction(Long auctionId) {
     Auction auction = findAuctionById(auctionId);

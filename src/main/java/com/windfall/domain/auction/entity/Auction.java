@@ -56,6 +56,9 @@ public class Auction extends BaseEntity {
   @Column(nullable = false)
   private Long dropAmount;
 
+  @Column(nullable = true)
+  private LocalDateTime stopLossReachedAt;
+
   @Builder.Default
   @Column(nullable = false)
   @Enumerated(EnumType.STRING)
