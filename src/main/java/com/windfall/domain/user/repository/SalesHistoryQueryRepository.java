@@ -1,7 +1,11 @@
 package com.windfall.domain.user.repository;
 
+import com.windfall.api.mypage.dto.purchasehistory.ChatInfoRaw;
+import com.windfall.api.user.dto.response.saleshistory.ProcessSalesRaw;
 import com.windfall.api.user.dto.response.saleshistory.SalesHistoryRaw;
+import com.windfall.api.user.dto.response.saleshistory.TradeInfoRaw;
 import com.windfall.domain.auction.entity.Auction;
+import com.windfall.domain.auction.enums.AuctionStatus;
 import jakarta.persistence.Tuple;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
@@ -14,16 +18,62 @@ public interface SalesHistoryQueryRepository extends JpaRepository<Auction, Long
 
   @Query("""
     SELECT
-    new com.windfall.api.user.dto.response.saleshistory.SalesHistoryRaw(
     a.id,
-    a.status)
+    a.status,
+    a.title,
+    a.startPrice,
+    a.startedAt
     FROM Auction a
     WHERE a.seller.id = :id AND
-    a.status = COALESCE(:filter, a.status) AND
+    a.status = :filter AND
     a.activated = true
     ORDER BY a.startedAt DESC
   """)
-  Slice<SalesHistoryRaw> getRawSalesHistory(@Param("id") Long userId, @Param("filter") String filter, Pageable pageable);
+  Slice<SalesHistoryRaw> getRawSalesHistory(@Param("id") Long userId, @Param("filter") AuctionStatus filter, Pageable pageable);
+
+  @Query("""
+    SELECT
+    a.id,
+    a.status,
+    a.title,
+    a.startPrice,
+    a.startedAt
+    FROM Auction a
+    WHERE a.seller.id = :id AND
+    a.activated = true
+    ORDER BY a.startedAt DESC
+  """)
+  Slice<SalesHistoryRaw> getRawSalesHistoryWithoutFilter(@Param("id") Long userId, Pageable pageable);
+
+  @Query("""
+  SELECT
+  a.id,
+  a.currentPrice
+  FROM Auction a
+  WHERE a.id IN(:ids)
+  """)
+  List<ProcessSalesRaw> getProcessSales(@Param("ids") List<Long> auctionIds);
+
+  @Query("""
+  SELECT
+  t.auction.id,
+  t.id,
+  t.finalPrice,
+  t.status
+  FROM Trade t
+  WHERE t.auction.id IN (:ids)
+  """)
+  List<TradeInfoRaw> getTradeInfoRaws(@Param("ids") List<Long> auctionIds);
+
+  @Query("""
+  SELECT t.id, cr.id, COUNT(cm.isRead)
+  FROM Trade t
+  LEFT JOIN ChatRoom cr ON t.id = cr.trade.id
+  LEFT JOIN ChatMessage cm ON cr.id = cm.chatRoom.id
+  WHERE t.id IN (:tradeIds) AND cm.isRead = false AND cm.sender.id != :userId
+  GROUP BY t.id, cr.id, cm.isRead
+  """)
+  List<ChatInfoRaw> getChatInfo(@Param("ids") List<Long> tradeIds, @Param("userId") Long userId);
 
   @Query(value = """
     SELECT

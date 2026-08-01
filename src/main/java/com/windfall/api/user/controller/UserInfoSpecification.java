@@ -6,6 +6,7 @@ import com.windfall.api.user.dto.response.UpdateUsernameResponse;
 import com.windfall.api.user.dto.response.UserInfoResponse;
 import com.windfall.api.user.dto.response.reviewlist.ReviewListResponse;
 import com.windfall.api.user.dto.response.saleshistory.BaseSalesHistoryResponse;
+import com.windfall.api.user.dto.response.saleshistory.SalesHistoryResponseV2;
 import com.windfall.domain.user.entity.CustomUserDetails;
 import com.windfall.global.config.swagger.ApiErrorCodes;
 import static com.windfall.global.exception.ErrorCode.INVALID_S3_UPLOAD;
@@ -35,7 +36,7 @@ public interface UserInfoSpecification {
       CustomUserDetails userDetails);
 
   @Operation(summary = "사용자 판매 내역", description = "특정 사용자의 판매 내역을 반환합니다.")
-  ApiResponse<SliceResponse<BaseSalesHistoryResponse>> getUserSalesHistory(
+  ApiResponse<SliceResponse<SalesHistoryResponseV2>> getUserSalesHistory(
       @PathVariable Long userid,
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @RequestParam(required = false) String filter,

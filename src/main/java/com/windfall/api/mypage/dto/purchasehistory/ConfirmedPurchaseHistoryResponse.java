@@ -2,9 +2,6 @@ package com.windfall.api.mypage.dto.purchasehistory;
 
 import com.windfall.domain.trade.enums.TradeStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.persistence.Tuple;
-import java.math.BigDecimal;
-import java.sql.Date;
 import java.time.LocalDate;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,7 +23,7 @@ public class ConfirmedPurchaseHistoryResponse extends BasePurchaseHistory{
     this.reviewId = reviewId;
   }
 
-  public static ConfirmedPurchaseHistoryResponse from(PurchaseHistoryInfo pinfo, ThumbnailImageInfo image, ChatInfo chat, ReviewInfo review){
+  public static ConfirmedPurchaseHistoryResponse from(PurchaseHistoryInfo pinfo, ThumbnailImageInfo image, ChatInfoRaw chat, ReviewInfo review){
     return ConfirmedPurchaseHistoryResponse
         .builder()
         .status(pinfo.status())

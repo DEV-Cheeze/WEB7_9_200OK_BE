@@ -1,10 +1,6 @@
 package com.windfall.api.mypage.dto.purchasehistory;
 
-import com.windfall.api.user.dto.response.saleshistory.ProcessingSalesHistoryResponse;
 import com.windfall.domain.trade.enums.TradeStatus;
-import jakarta.persistence.Tuple;
-import java.math.BigDecimal;
-import java.sql.Date;
 import java.time.LocalDate;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,7 +16,7 @@ public class PurchaseHistoryResponse extends BasePurchaseHistory{
     super(status, auctionId, tradeId, sellerId, sellername, sellerProfileImage, title,
         auctionImageUrl, startPrice, endPrice, discountPercent, purchasedDate, roomId, unreadCount);
   }
-  public static PurchaseHistoryResponse from(PurchaseHistoryInfo pinfo, ThumbnailImageInfo image, ChatInfo chat){
+  public static PurchaseHistoryResponse from(PurchaseHistoryInfo pinfo, ThumbnailImageInfo image, ChatInfoRaw chat){
     return PurchaseHistoryResponse
         .builder()
         .status(pinfo.status())

@@ -5,15 +5,7 @@ import java.time.LocalDate;
 import lombok.Getter;
 
 @Getter
-@Schema(
-    subTypes = { // 자식 클래스
-        SalesHistoryResponse.class,
-        ProcessingSalesHistoryResponse.class,
-        CompletedSalesHistoryResponse.class,
-        OwnerCompletedSalesHistoryResponse.class
-    }
-)
-public abstract class BaseSalesHistoryResponse {
+public class BaseSalesHistoryResponse {
   @Schema(description = "경매 상태")
   private final String status;
 

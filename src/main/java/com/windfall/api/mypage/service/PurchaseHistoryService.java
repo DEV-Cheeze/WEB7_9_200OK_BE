@@ -1,10 +1,9 @@
 package com.windfall.api.mypage.service;
 
 import com.windfall.api.mypage.dto.purchasehistory.BasePurchaseHistory;
-import com.windfall.api.mypage.dto.purchasehistory.ChatInfo;
+import com.windfall.api.mypage.dto.purchasehistory.ChatInfoRaw;
 import com.windfall.api.mypage.dto.purchasehistory.ConfirmedPurchaseHistoryResponse;
 import com.windfall.api.mypage.dto.purchasehistory.ReviewInfo;
-import com.windfall.api.mypage.dto.purchasehistory.ThumbnailImageIds;
 import com.windfall.api.mypage.dto.purchasehistory.ThumbnailImageInfo;
 import com.windfall.api.mypage.dto.purchasehistory.TradeGroups;
 import com.windfall.api.mypage.dto.purchasehistory.PurchaseHistoryInfo;
@@ -41,7 +40,7 @@ public class PurchaseHistoryService {
     List<Long> tradeIds = rawData.stream().map(PurchaseHistoryInfo::tradeId).toList();
 
     //3. 채팅 정보
-    Map<Long, ChatInfo> chatInfoMap = getChatInfo(tradeIds, userId);
+    Map<Long, ChatInfoRaw> chatInfoMap = getChatInfo(tradeIds, userId);
 
     //4. 썸네일 이미지 정보
     Map<Long, ThumbnailImageInfo> imageInfoMap = getThumbnailImageInfo(auctionIds);
@@ -53,7 +52,7 @@ public class PurchaseHistoryService {
     List<BasePurchaseHistory> resultContent = rawData.stream().map(data -> {
 
       ThumbnailImageInfo image = imageInfoMap.getOrDefault(data.auctionId(), new ThumbnailImageInfo(null, null));
-      ChatInfo chat = chatInfoMap.getOrDefault(data.tradeId(), new ChatInfo(null, null, 0L));
+      ChatInfoRaw chat = chatInfoMap.getOrDefault(data.tradeId(), new ChatInfoRaw(null, null, 0L));
 
       if(data.status() == TradeStatus.PAYMENT_COMPLETED){
         ReviewInfo review = reviewInfoMap.getOrDefault(data.tradeId(), new ReviewInfo(null, null));
@@ -88,11 +87,11 @@ public class PurchaseHistoryService {
         ));
   }
 
-  private Map<Long, ChatInfo> getChatInfo(List<Long> tradeIds, Long userId){
+  private Map<Long, ChatInfoRaw> getChatInfo(List<Long> tradeIds, Long userId){
     return purchaseHistoryQueryRepository.getChatInfo(tradeIds, userId)
         .stream()
         .collect(Collectors.toMap(
-            ChatInfo::tradeId,
+            ChatInfoRaw::tradeId,
             t -> t
         ));
   }

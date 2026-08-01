@@ -1,9 +1,8 @@
 package com.windfall.domain.mypage.repository;
 
-import com.windfall.api.mypage.dto.purchasehistory.ChatInfo;
+import com.windfall.api.mypage.dto.purchasehistory.ChatInfoRaw;
 import com.windfall.api.mypage.dto.purchasehistory.PurchaseHistoryInfo;
 import com.windfall.api.mypage.dto.purchasehistory.ReviewInfo;
-import com.windfall.api.mypage.dto.purchasehistory.ThumbnailImageIds;
 import com.windfall.api.mypage.dto.purchasehistory.ThumbnailImageInfo;
 import com.windfall.domain.trade.entity.Trade;
 import jakarta.persistence.Tuple;
@@ -47,7 +46,7 @@ public interface PurchaseHistoryQueryRepository extends JpaRepository<Trade, Lon
   WHERE t.id IN (:tradeIds) AND cm.isRead = false AND cm.sender.id != :userId
   GROUP BY t.id, cr.id, cm.isRead
   """)
-  List<ChatInfo> getChatInfo(@Param("tradeIds") List<Long> tradeId, @Param("userId") Long userId);
+  List<ChatInfoRaw> getChatInfo(@Param("tradeIds") List<Long> tradeId, @Param("userId") Long userId);
 
   @Query("""
   SELECT MIN(ai.id) FROM AuctionImage ai

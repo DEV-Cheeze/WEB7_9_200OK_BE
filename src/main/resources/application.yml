@@ -1,3 +1,9 @@
+server:
+  tomcat:
+    mbeanregistry:
+      enabled: true
+
+
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -6,6 +12,7 @@ spring:
     password: ${DB_PASSWORD}
     hikari:
       auto-commit: false
+      maximum-pool-size: 35
   servlet:
     multipart:
       max-file-size: 10MB
@@ -99,7 +106,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info
+        include: health, info, prometheus, metrics
   endpoint:
     health:
       show-details: always
