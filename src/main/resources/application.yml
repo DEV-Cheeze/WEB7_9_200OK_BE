@@ -12,7 +12,7 @@ spring:
     password: ${DB_PASSWORD}
     hikari:
       auto-commit: false
-      maximum-pool-size: 35
+      maximum-pool-size: 10
   servlet:
     multipart:
       max-file-size: 10MB
@@ -24,6 +24,8 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: 6379
+      connect-timeout: 300ms
+      timeout: 200ms
 
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
@@ -34,7 +36,7 @@ spring:
       jakarta.persistence.schema-generation.database.action: none
       jakarta.persistence.schema-generation.scripts.action: create
       jakarta.persistence.schema-generation.scripts.create-target: build/generated-schema.sql
-      hibernate.format_sql: true
+      hibernate.format_sql: false
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
     show-sql: true
@@ -65,9 +67,9 @@ spring:
 
 logging:
   level:
-    org.hibernate.orm.jdbc.bind: TRACE
-    org.hibernate.orm.jdbc.extract: TRACE
-    org.springframework.transaction.interceptor: TRACE
+    org.hibernate.orm.jdbc.bind: off
+    org.hibernate.orm.jdbc.extract: off
+    org.springframework.transaction.interceptor: off
     com.backend: DEBUG
   discord:
     webhook-url: ${DISCORD_WEBHOOK_URL}
