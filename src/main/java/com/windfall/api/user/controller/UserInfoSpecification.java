@@ -5,8 +5,7 @@ import com.windfall.api.user.dto.response.UpdateUserProfileImageResponse;
 import com.windfall.api.user.dto.response.UpdateUsernameResponse;
 import com.windfall.api.user.dto.response.UserInfoResponse;
 import com.windfall.api.user.dto.response.reviewlist.ReviewListResponse;
-import com.windfall.api.user.dto.response.saleshistory.BaseSalesHistoryResponse;
-import com.windfall.api.user.dto.response.saleshistory.SalesHistoryResponseV2;
+import com.windfall.api.user.dto.response.saleshistory.SalesHistoryResponse;
 import com.windfall.domain.user.entity.CustomUserDetails;
 import com.windfall.global.config.swagger.ApiErrorCodes;
 import static com.windfall.global.exception.ErrorCode.INVALID_S3_UPLOAD;
@@ -17,10 +16,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -36,7 +33,7 @@ public interface UserInfoSpecification {
       CustomUserDetails userDetails);
 
   @Operation(summary = "사용자 판매 내역", description = "특정 사용자의 판매 내역을 반환합니다.")
-  ApiResponse<SliceResponse<SalesHistoryResponseV2>> getUserSalesHistory(
+  ApiResponse<SliceResponse<SalesHistoryResponse>> getUserSalesHistory(
       @PathVariable Long userid,
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @RequestParam(required = false) String filter,

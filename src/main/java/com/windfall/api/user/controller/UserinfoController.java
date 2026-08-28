@@ -5,8 +5,7 @@ import com.windfall.api.user.dto.response.UpdateUsernameResponse;
 import com.windfall.api.user.dto.response.UserInfoResponse;
 import com.windfall.api.user.dto.response.UpdateUserProfileImageResponse;
 import com.windfall.api.user.dto.response.reviewlist.ReviewListResponse;
-import com.windfall.api.user.dto.response.saleshistory.BaseSalesHistoryResponse;
-import com.windfall.api.user.dto.response.saleshistory.SalesHistoryResponseV2;
+import com.windfall.api.user.dto.response.saleshistory.SalesHistoryResponse;
 import com.windfall.api.user.service.UserInfoService;
 import com.windfall.domain.user.entity.CustomUserDetails;
 import com.windfall.global.response.ApiResponse;
@@ -51,7 +50,7 @@ public class UserinfoController implements UserInfoSpecification{
 
   @Override
   @GetMapping("/{userid}/sales")
-  public ApiResponse<SliceResponse<SalesHistoryResponseV2>> getUserSalesHistory(
+  public ApiResponse<SliceResponse<SalesHistoryResponse>> getUserSalesHistory(
       @PathVariable Long userid,
       @AuthenticationPrincipal CustomUserDetails userDetails,
       @RequestParam(required = false) String filter,
@@ -61,7 +60,7 @@ public class UserinfoController implements UserInfoSpecification{
       loginId = userDetails.getUserId();
     }
 
-    SliceResponse<SalesHistoryResponseV2> response = userInfoService.getUserSalesHistory(userid, loginId, filter, pageable);
+    SliceResponse<SalesHistoryResponse> response = userInfoService.getUserSalesHistory(userid, loginId, filter, pageable);
 
     return ApiResponse.ok("사용자 판매내역 조회에 성공했습니다.", response);
   }

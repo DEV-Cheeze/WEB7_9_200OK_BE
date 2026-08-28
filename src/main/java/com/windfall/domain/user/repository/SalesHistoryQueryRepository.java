@@ -4,6 +4,9 @@ import com.windfall.api.mypage.dto.purchasehistory.ChatInfoRaw;
 import com.windfall.api.user.dto.response.saleshistory.ProcessSalesRaw;
 import com.windfall.api.user.dto.response.saleshistory.SalesHistoryRaw;
 import com.windfall.api.user.dto.response.saleshistory.TradeInfoRaw;
+import com.windfall.api.user.dto.response.saleshistory.projections.ChatInfoProjection;
+import com.windfall.api.user.dto.response.saleshistory.projections.SalesHistoryBaseProjection;
+import com.windfall.api.user.dto.response.saleshistory.projections.SalesStatusProjection;
 import com.windfall.domain.auction.entity.Auction;
 import com.windfall.domain.auction.enums.AuctionStatus;
 import jakarta.persistence.Tuple;
@@ -15,6 +18,72 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SalesHistoryQueryRepository extends JpaRepository<Auction, Long> {
+
+
+  @Query(value = """
+    SELECT a.id
+    FROM Auction a
+    WHERE a.activated = true AND a.seller.id = :id
+    ORDER BY a.startedAt DESC
+  """)
+  Slice<Long> getAuctionIdListWithoutFilter(@Param("id") Long sellerId, Pageable pageable);
+
+  @Query(value = """
+    SELECT a.id
+    FROM Auction a
+    WHERE
+    a.activated = true AND
+    a.seller.id = :id AND
+    a.status = :filter
+    ORDER BY a.startedAt DESC
+  """)
+  Slice<Long> getAuctionIdList(@Param("id") Long sellerId, @Param("filter") AuctionStatus filter, Pageable pageable);
+
+  @Query(value = """
+    SELECT a.id as auctionId,
+        a.status as status,
+        a.title as title,
+        a.start_price as startPrice,
+        a.started_at as startedAt,
+        ai.image as auctionImageUrl
+    FROM auction a
+    JOIN (SELECT aimg.auction_id as aucid, MIN(aimg.id) as first_img
+        FROM auction_image aimg
+        WHERE auction_id IN (:aucids)
+        GROUP BY aimg.auction_id)
+       aisub ON aisub.aucid = a.id
+    JOIN auction_image ai ON ai.id = aisub.first_img
+    WHERE a.activated = true AND a.id IN (:aucids)
+  """, nativeQuery = true)
+  List<SalesHistoryBaseProjection> getRawSalesHistoryWithImg(@Param("aucids") List<Long> auctionIds);
+
+  @Query(value = """
+    SELECT a.id as auctionId,
+     a.status as status,
+     a.title as title,
+     a.start_price as startPrice,
+     a.started_at as startedAt,
+     (
+         SELECT ai.image
+         FROM auction_image ai
+         WHERE ai.auction_id = a.id
+         ORDER BY ai.id
+         LIMIT 1
+     ) AS auctionImageUrl
+    FROM auction a
+    WHERE a.id IN (:aucids) AND
+        a.activated = true;
+  """, nativeQuery = true)
+  List<SalesHistoryBaseProjection> getRawSalesHistoryWithImgV3(@Param("aucids") List<Long> auctionIds);
+
+  @Query(value = """
+    SELECT NULL as tradeId, a.id as auctionId, a.current_price as currentPrice, NULL as finalPrice, NULL as tradeStatus FROM auction a -- process
+    WHERE a.id IN (:auctionIds) AND a.status IN ('PROCESS', 'FAILED')
+    UNION ALL
+    SELECT t.id as tradeId, a.id as auctionId, NULL as currentPrice, t.final_price as finalPrice, t.status as tradeStatus FROM auction a -- completed
+    JOIN trade t ON a.id = t.auction_id WHERE a.id IN (:auctionIds) AND a.status = 'COMPLETED';
+  """, nativeQuery = true)
+  List<SalesStatusProjection> getAllStatusInformation(@Param("auctionIds") List<Long> auctionIds);
 
   @Query("""
     SELECT
@@ -66,107 +135,12 @@ public interface SalesHistoryQueryRepository extends JpaRepository<Auction, Long
   List<TradeInfoRaw> getTradeInfoRaws(@Param("ids") List<Long> auctionIds);
 
   @Query("""
-  SELECT t.id, cr.id, COUNT(cm.isRead)
+  SELECT t.id, cr.id, COUNT(cm.id)
   FROM Trade t
-  LEFT JOIN ChatRoom cr ON t.id = cr.trade.id
+      LEFT JOIN ChatRoom cr ON t.id = cr.trade.id
   LEFT JOIN ChatMessage cm ON cr.id = cm.chatRoom.id
   WHERE t.id IN (:tradeIds) AND cm.isRead = false AND cm.sender.id != :userId
   GROUP BY t.id, cr.id, cm.isRead
   """)
-  List<ChatInfoRaw> getChatInfo(@Param("ids") List<Long> tradeIds, @Param("userId") Long userId);
-
-  @Query(value = """
-    SELECT
-    a.status AS status, -- 경매 상태 (예정, 취소 (기본))
-    a.id AS auctionId, -- 경매 id
-    a.title AS title, -- 경매 상품 이름
-    ai.image AS auctionImageUrl, -- 경매 상품 이미지 (첫 번째)
-    a.start_price AS startPrice, -- 경매 상품 시작가
-    DATE(a.started_at) AS startedAt -- 경매 시작 시간
-    FROM auction a
-    LEFT JOIN (
-    SELECT i.auction_id as auction_id, MIN(i.id) as first_image_id
-      FROM auction_image i 
-      WHERE i.auction_id IN (:ids)
-      GROUP BY i.auction_id
-    ) x ON x.auction_id = a.id
-    LEFT JOIN auction_image ai ON x.first_image_id = ai.id  -- 각 경매별 가장 첫 번째 이미지 뽑기
-    WHERE a.id IN(:ids)
-  """, nativeQuery = true)
-  List<Tuple> getSalesHistory(@Param("ids") List<Long> ids);
-
-  @Query(value = """
-    SELECT
-    a.status AS status, -- 경매 상태 (완료, 사용자가 아닐 경우)
-    a.id AS auctionId, -- 경매 id
-    a.title AS title, -- 경매 상품 이름
-    ai.image AS auctionImageUrl, -- 경매 상품 사진
-    a.start_price AS startPrice, -- 경매 시작가
-    t.final_price AS endPrice, -- 낙찰가
-    ROUND(((a.start_price - t.final_price) / a.start_price) * 100) AS discountPercent, -- 할인율
-    DATE(a.started_at) AS startedAt, -- 경매 시작일
-    t.status AS tradeStatus -- 거래 상태
-    FROM auction a
-    JOIN trade t ON a.id = t.auction_id
-    LEFT JOIN (
-    SELECT i.auction_id as auction_id, MIN(i.id) as first_image_id
-      FROM auction_image i
-      WHERE i.auction_id IN (:ids)
-      GROUP BY i.auction_id
-    ) x ON x.auction_id = a.id
-    LEFT JOIN auction_image ai ON x.first_image_id = ai.id  -- 각 경매별 가장 첫 번째 이미지 뽑기
-    WHERE a.id IN(:ids) AND (t.status = "PAYMENT_COMPLETED" OR t.status = "PURCHASE_CONFIRMED")
-  """, nativeQuery = true)
-  List<Tuple> getCompletedSalesHistory(@Param("ids") List<Long> ids);
-
-  @Query(value = """
-   SELECT
-   a.status AS status, -- 경매 상태 (완료, 사용자일 경우)
-   a.id AS auctionId, -- 경매 id
-   a.title AS title, -- 경매 상품 이름
-   ai.image AS auctionImageUrl, -- 경매 상품 사진
-   a.start_price AS startPrice, -- 경매 시작가
-   t.final_price AS endPrice, -- 낙찰가
-   ROUND(((a.start_price - t.final_price) / a.start_price) * 100) AS discountPercent, -- 할인율
-   DATE(a.started_at) AS startedAt, -- 경매 시작일
-   t.status AS tradeStatus, -- 거래 상태
-   cr.id AS roomId, -- 채팅방 id
-   COALESCE(SUM(cm.sender_id != :id AND cm.is_read = false), 0) AS unreadCount-- 안 읽은 채팅 개수
-   FROM auction a
-   JOIN trade t ON a.id = t.auction_id
-   JOIN chat_room cr ON t.id = cr.trade_id
-   LEFT JOIN chat_message cm ON cr.id = cm.chat_room_id
-   LEFT JOIN (
-    SELECT i.auction_id as auction_id, MIN(i.id) as first_image_id
-      FROM auction_image i
-      WHERE i.auction_id IN (:ids)
-      GROUP BY i.auction_id
-    ) x ON x.auction_id = a.id
-    LEFT JOIN auction_image ai ON x.first_image_id = ai.id  -- 각 경매별 가장 첫 번째 이미지 뽑기
-   WHERE a.id IN(:ids) AND (t.status = "PAYMENT_COMPLETED" OR t.status = "PURCHASE_CONFIRMED")
-   GROUP BY a.status, a.id, a.title, ai.image, a.start_price, a.started_at, t.final_price, t.status, cr.id
-  """, nativeQuery = true)
-  List<Tuple> getOwnerCompletedSalesHistory(@Param("ids") List<Long> ids, @Param("id") Long userid);
-
-  @Query(value = """
-   SELECT
-   a.status AS status, -- 경매 상태 (진행중이거나 유찰중일 경우)
-   a.id AS auctionId, -- 경매 id
-   a.title AS title, -- 경매 상품 이름
-   ai.image AS auctionImageUrl, -- 경매 상품 사진
-   a.start_price AS startPrice, -- 경매 시작가
-   a.current_price AS currentPrice, -- 현재가
-   ROUND(((a.start_price - a.current_price) / a.start_price) * 100, 0) AS discountPercent, -- 할인율
-   DATE(a.started_at) AS startedAt -- 경매 시작일
-   FROM auction a
-   LEFT JOIN (
-    SELECT i.auction_id as auction_id, MIN(i.id) as first_image_id
-      FROM auction_image i
-      WHERE i.auction_id IN (:ids)
-      GROUP BY i.auction_id
-    ) x ON x.auction_id = a.id
-    LEFT JOIN auction_image ai ON x.first_image_id = ai.id  -- 각 경매별 가장 첫 번째 이미지 뽑기
-   WHERE a.id IN(:ids)
-  """, nativeQuery = true)
-  List<Tuple> getProcessingSalesHistory(@Param("ids") List<Long> ids);
+  List<ChatInfoProjection> getChatInfo(@Param("tradeIds") List<Long> tradeIds, @Param("userId") Long userId);
 }
