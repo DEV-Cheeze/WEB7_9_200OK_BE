@@ -2,6 +2,7 @@ package com.windfall.api.user.dto.response.saleshistory;
 
 import com.windfall.api.mypage.dto.purchasehistory.ChatInfoRaw;
 import com.windfall.api.user.dto.response.reviewlist.AuctionImageRaw;
+import com.windfall.api.user.dto.response.saleshistory.projections.ChatInfoProjection;
 import java.util.List;
 import org.springframework.data.domain.Slice;
 
@@ -12,7 +13,7 @@ public record SalesHistoryQueryResult(
     List<AuctionImageRaw> auctionImageRaws,
     List<TradeInfoRaw> tradeInfoRaws,
     List<ProcessSalesRaw> processSalesRaws,
-    List<ChatInfoRaw> chatInfos
+    List<ChatInfoProjection> chatInfos
 ) {
 
 

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.windfall.api.auction.dto.AuctionSellerInfoCachedData;
 import com.windfall.api.auction.dto.response.AuctionSellerInfoResponse;
 import com.windfall.global.redis.enums.CacheDataStatus;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
@@ -26,7 +28,7 @@ public class AuctionSellerInfoCache {
   private static final long BASE_TTL_SECONDS = 300;
   private static final int TTL_JITTER_SECONDS_PERCENTS = 10; //Cache Avalanche 방지
 
-
+  @CircuitBreaker(name = "sellerCache", fallbackMethod = "getFallback")
   public AuctionSellerInfoCachedData get(Long sellerId){
 
     String key = createKey(sellerId);
@@ -37,16 +39,12 @@ public class AuctionSellerInfoCache {
       if(json == null){
         return new AuctionSellerInfoCachedData(CacheDataStatus.MISS, null);
       }
-
       return new AuctionSellerInfoCachedData(CacheDataStatus.HIT,  objectMapper.readValue(json, AuctionSellerInfoResponse.class));
 
     }catch (JsonProcessingException e){ //역직렬화 실패 시 => 잘못된 캐시 형태로 존재 => 캐시 삭제
       log.warn("캐시 역직렬화 실패. key={}", key, e);
       delete(key);
       return new AuctionSellerInfoCachedData(CacheDataStatus.MISS, null);
-    }catch (DataAccessException e){ //Redis 연결 실패
-      log.warn("Redis 캐시 조회 실패. key={}", key, e);
-      return new AuctionSellerInfoCachedData(CacheDataStatus.UNAVAILABLE, null);
     }
   }
 
@@ -96,4 +94,15 @@ public class AuctionSellerInfoCache {
     String key = createKey(sellerId);
     redisTemplate.delete(key);
   }
+
+  public AuctionSellerInfoCachedData getFallback(Long sellerId, DataAccessException e){
+    log.warn("Redis 조회 실패. sellerId={}", sellerId, e);
+    return new AuctionSellerInfoCachedData(CacheDataStatus.UNAVAILABLE, null);
+  }
+
+  public AuctionSellerInfoCachedData getFallback(Long sellerId, CallNotPermittedException e){
+    log.debug("[Circuit Breaker OPEN] Redis 호출 차단. sellerId={}", sellerId, e);
+    return new AuctionSellerInfoCachedData(CacheDataStatus.UNAVAILABLE, null);
+  }
+
 }

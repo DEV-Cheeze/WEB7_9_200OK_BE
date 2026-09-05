@@ -10,6 +10,7 @@ import com.windfall.api.user.dto.response.saleshistory.ProcessSalesRaw;
 import com.windfall.api.user.dto.response.saleshistory.SalesHistoryQueryResult;
 import com.windfall.api.user.dto.response.saleshistory.SalesHistoryRaw;
 import com.windfall.api.user.dto.response.saleshistory.TradeInfoRaw;
+import com.windfall.api.user.dto.response.saleshistory.projections.ChatInfoProjection;
 import com.windfall.domain.auction.enums.AuctionStatus;
 import com.windfall.domain.auction.enums.AuctionStatusGroup;
 import com.windfall.domain.auction.repository.AuctionImageRepository;
@@ -63,7 +64,7 @@ public class SalesInfoQueryService {
 
 
     //로그인 상태 확인하여 chatInfo 쿼리 실행여부 결정
-    List<ChatInfoRaw> chatInfos = new ArrayList<>();
+    List<ChatInfoProjection> chatInfos = new ArrayList<>();
 
     if(userId.equals(loginId)){
       List<Long> tradeIds = tradeInfoRaws.stream().map(TradeInfoRaw::tradeId).toList();
