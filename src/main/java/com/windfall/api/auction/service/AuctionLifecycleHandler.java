@@ -2,7 +2,6 @@ package com.windfall.api.auction.service;
 
 import com.windfall.api.auction.dto.AuctionPriceChangeResult;
 import com.windfall.api.auction.dto.PriceChangedAuctionInfo;
-import com.windfall.api.auction.service.component.AuctionMessageSender;
 import com.windfall.api.notification.event.vo.AuctionPriceDroppedEvent;
 import com.windfall.api.notification.event.vo.PriceDroppedBroadcastEvent;
 import com.windfall.api.notification.event.vo.PriceDroppedBroadcastEvents;
