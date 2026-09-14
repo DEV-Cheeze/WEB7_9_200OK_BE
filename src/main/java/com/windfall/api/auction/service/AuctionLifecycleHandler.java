@@ -29,7 +29,6 @@ public class AuctionLifecycleHandler {
   private final AuctionViewerService viewerService;
   private final AuctionPriceHistoryRepository historyRepository;
   private final ApplicationEventPublisher eventPublisher;
-  private final AuctionMessageSender messageSender;
 
   @Transactional
   public AuctionPriceChangeResult updatePrices(LocalDateTime now){
