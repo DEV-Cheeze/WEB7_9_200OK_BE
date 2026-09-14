@@ -1,16 +1,14 @@
 package com.windfall.api.auction.service;
 
 import static com.windfall.domain.auction.enums.AuctionStatus.COMPLETED;
-import static com.windfall.domain.auction.enums.AuctionStatus.FAILED;
 import static com.windfall.domain.auction.enums.AuctionStatus.PROCESS;
 import static com.windfall.global.exception.ErrorCode.NOT_FOUND_AUCTION;
 
+import com.windfall.api.auction.dto.AuctionPriceChangeResult;
+import com.windfall.api.auction.dto.PriceChangedAuctionInfo;
 import com.windfall.api.auction.service.component.AuctionMessageSender;
-import com.windfall.api.notification.event.vo.AuctionPriceDroppedEvent;
 import com.windfall.api.notification.service.SseService;
 import com.windfall.domain.auction.entity.Auction;
-import com.windfall.domain.auction.entity.AuctionPriceHistory;
-import com.windfall.domain.auction.repository.AuctionPriceHistoryRepository;
 import com.windfall.domain.auction.repository.AuctionRepository;
 import com.windfall.domain.notification.entity.NotificationSetting;
 import com.windfall.domain.notification.enums.NotificationSettingType;
@@ -22,7 +20,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,10 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuctionStateService {
 
   private final AuctionRepository auctionRepository;
-  private final AuctionPriceHistoryRepository historyRepository;
-  private final AuctionViewerService viewerService;
+  private final AuctionLifecycleHandler lifecycleHandler;
   private final AuctionMessageSender messageSender;
-  private final ApplicationEventPublisher eventPublisher;
   private final NotificationSettingRepository notificationSettingRepository;
   private final SseService sseService;
 
@@ -53,30 +48,18 @@ public class AuctionStateService {
     });
   }
 
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void decreasePrice(Long auctionId, LocalDateTime now) {
-    Auction auction = findAuctionById(auctionId);
-
-    if (auction.getStatus() != PROCESS) return;
-
-    long oldPrice = auction.getCurrentPrice();
-    long minutesElapsed = java.time.Duration.between(auction.getStartedAt(), now).toMinutes();
-    auction.declinePrice(minutesElapsed);
-
-    if(auction.getCurrentPrice() == oldPrice && auction.getStatus() != FAILED) return;
-
-    savePriceHistoryWithViewers(auction);
-
-    publishPriceDroppedEvent(auction, oldPrice, now);
-    messageSender.broadcastPriceUpdate(auctionId, auction.getCurrentPrice(), auction.getStatus());
-
-    logAuctionChange(auction, oldPrice);
-  }
-
   @Transactional
   public void decreasePrice(LocalDateTime now){
-    int failed = auctionRepository.setFailedAuctions(now);
-    int decreased = auctionRepository.decreasePrice(now);
+
+    AuctionPriceChangeResult changedAuctions = lifecycleHandler.updatePrices(now);
+
+    List<PriceChangedAuctionInfo> changes = changedAuctions.changes();
+
+    int failed = changedAuctions.failed();
+    int decreased = changedAuctions.decreased();
+
+    lifecycleHandler.savePriceHistoryWithViewers(changes); //Async로 처리
+    lifecycleHandler.publishEventAndBroadcast(changes, now);
 
     log.info("Auction Scheduler Info : 유찰 - {}, 감소 - {}", failed, decreased);
   }
@@ -92,42 +75,9 @@ public class AuctionStateService {
     notifyAuctionSuccess(auction);
   }
 
-  private void logAuctionChange(Auction auction, long oldPrice) {
-    if(auction.getStatus() == FAILED) {
-      log.info("❌경매 유찰 ( 경매 ID: {}, StopLoss 도달)", auction.getId());
-
-      notifyAuctionFailed(auction);
-    } else {
-      log.info("⬇️경매 가격 하락 ( 경매 ID: {}, 이전 가격: {}, 현재 가격: {} )",
-          auction.getId(), oldPrice, auction.getCurrentPrice());
-    }
-  }
-
-  private void savePriceHistoryWithViewers(Auction auction) {
-    long viewerCount = viewerService.getViewerCount(auction.getId());
-
-    AuctionPriceHistory history = AuctionPriceHistory.create(auction, auction.getCurrentPrice(), viewerCount);
-    historyRepository.save(history);
-  }
-
   private Auction findAuctionById(Long auctionId) {
     return auctionRepository.findById(auctionId)
         .orElseThrow(() -> new ErrorException(NOT_FOUND_AUCTION));
-  }
-
-  private void publishPriceDroppedEvent(
-      Auction auction,
-      long oldPrice,
-      LocalDateTime now
-  ) {
-    eventPublisher.publishEvent(
-        new AuctionPriceDroppedEvent(
-            auction.getId(),
-            oldPrice,
-            auction.getCurrentPrice(),
-            now
-        )
-    );
   }
 
   private void notifyAuctionStart(Auction auction) {
@@ -136,29 +86,6 @@ public class AuctionStateService {
         NotificationSettingType.AUCTION_START,
         (userId, auc) ->
             sseService.auctionStartNotificationSend(
-                userId,
-                auc.getId(),
-                auc.getTitle()
-            )
-    );
-  }
-
-  private void notifyAuctionFailed(Auction auction) {
-    notifySeller(
-        auction,
-        (auc) ->
-            sseService.sendAuctionFailedToSeller(
-                auc.getSeller().getId(),
-                auc.getId(),
-                auc.getTitle()
-            )
-    );
-
-    notifySubscribers(
-        auction,
-        NotificationSettingType.AUCTION_END,
-        (userId, auc) ->
-            sseService.sendAuctionFailedToSubscriber(
                 userId,
                 auc.getId(),
                 auc.getTitle()

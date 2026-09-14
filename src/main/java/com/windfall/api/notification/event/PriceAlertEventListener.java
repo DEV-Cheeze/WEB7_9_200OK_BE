@@ -1,6 +1,8 @@
 package com.windfall.api.notification.event;
 
+import com.windfall.api.auction.service.component.AuctionMessageSender;
 import com.windfall.api.notification.event.vo.AuctionPriceDroppedEvent;
+import com.windfall.api.notification.event.vo.PriceDroppedBroadcastEvents;
 import com.windfall.api.notification.service.SseService;
 import com.windfall.domain.notification.entity.PriceNotification;
 import com.windfall.domain.notification.repository.PriceNotificationRepository;
@@ -16,6 +18,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class PriceAlertEventListener {
 
   private final PriceNotificationRepository priceNotificationRepository;
+  private final AuctionMessageSender messageSender;
   private final SseService sseService;
 
   @Async
@@ -37,5 +40,10 @@ public class PriceAlertEventListener {
         );
       }
     }
+  }
+
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void broadcastPriceUpdates(PriceDroppedBroadcastEvents events) {
+    messageSender.broadcastPriceUpdates(events);
   }
 }
