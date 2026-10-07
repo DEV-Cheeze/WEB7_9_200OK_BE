@@ -67,9 +67,9 @@ spring:
 
 logging:
   level:
-    org.hibernate.orm.jdbc.bind: off
-    org.hibernate.orm.jdbc.extract: off
-    org.springframework.transaction.interceptor: off
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.orm.jdbc.extract: TRACE
+    org.springframework.transaction.interceptor: TRACE
     com.backend: DEBUG
   discord:
     webhook-url: ${DISCORD_WEBHOOK_URL}
