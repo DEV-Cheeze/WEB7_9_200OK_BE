@@ -33,15 +33,19 @@ public class AuctionSchedulerService {
     }
   }
 
+  @LogExecutionTime
   public void dropAuctionPrices(LocalDateTime now) {
-    List<Auction> activeAuctions = auctionRepository.findAllByStatus(PROCESS);
-
-    for (Auction auction : activeAuctions) {
-      try {
-        auctionStateService.decreasePrice(auction.getId(), now);
-      } catch (Exception e) {
-        log.error("경매 가격 하락 처리 실패 ( 경매 ID: {} )", auction.getId(), e);
-      }
-    }
+    auctionStateService.decreasePrice(now);
+//    List<Auction> activeAuctions = auctionRepository.findAllByStatus(PROCESS); //이것부터 처리
+//
+//    for (Auction auction : activeAuctions) {
+//      try {
+//
+//      } catch (Exception e) {
+//        log.error("경매 가격 하락 처리 실패 ( 경매 ID: {} )", auction.getId(), e);
+//      }
+//    }
   }
 }
+
+// 스케줄러 성능 테스트 중입니다...
