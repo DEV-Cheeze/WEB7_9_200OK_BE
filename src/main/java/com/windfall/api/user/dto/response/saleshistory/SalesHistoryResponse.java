@@ -1,36 +1,32 @@
 package com.windfall.api.user.dto.response.saleshistory;
 
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import jakarta.persistence.Tuple;
-import java.time.LocalDate;
+import com.windfall.domain.auction.enums.AuctionStatus;
+import java.time.LocalDateTime;
 import lombok.Builder;
-import lombok.Getter;
 
-@Getter
-@JsonPropertyOrder({
-    "status",
-    "auctionId",
-    "title",
-    "auctionImageUrl",
-    "startPrice",
-    "startedAt",
-}) //json 출력 순서 맞추기
-public class SalesHistoryResponse extends BaseSalesHistoryResponse{
+@Builder
+public record SalesHistoryResponse(
+    AuctionStatus status,
+    Long auctionId,
+    String title,
+    String auctionImageUrl,
+    int startPrice,
+    LocalDateTime startedAt,
+    SalesStatusDetail statusDetail
+)
+{
 
-  @Builder
-  public SalesHistoryResponse(String status, Long auctionId, String title, String auctionImageUrl,
-      int startPrice, LocalDate startedAt) {
-    super(status, auctionId, title, auctionImageUrl, startPrice, startedAt);
-  }
-
-  public static SalesHistoryResponse from(Tuple tuple){
+  public static SalesHistoryResponse from(SalesHistoryRaw salesHistoryRaw, String auctionImageUrl, SalesStatusDetail details){
     return SalesHistoryResponse.builder()
-        .status(tuple.get("status", String.class))
-        .auctionId(tuple.get("auctionId", Long.class))
-        .title(tuple.get("title", String.class))
-        .auctionImageUrl(tuple.get("auctionImageUrl", String.class))
-        .startPrice(tuple.get("startPrice", Long.class).intValue())
-        .startedAt(tuple.get("startedAt", java.sql.Date.class).toLocalDate())
+        .status(salesHistoryRaw.status())
+        .auctionId(salesHistoryRaw.auctionId())
+        .title(salesHistoryRaw.title())
+        .auctionImageUrl(auctionImageUrl)
+        .startPrice(salesHistoryRaw.startPrice().intValue())
+        .startedAt(salesHistoryRaw.startedAt())
+        .statusDetail(details)
         .build();
   }
+
+
 }

@@ -1,3 +1,9 @@
+server:
+  tomcat:
+    mbeanregistry:
+      enabled: true
+
+
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -6,6 +12,7 @@ spring:
     password: ${DB_PASSWORD}
     hikari:
       auto-commit: false
+      maximum-pool-size: 10
   servlet:
     multipart:
       max-file-size: 10MB
@@ -17,16 +24,22 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: 6379
+      connect-timeout: 300ms
+      timeout: 200ms
 
   jpa:
-    properties:
-      hibernate:
-        format_sql: true
-        highlight_sql: true
-        use_sql_comments: true
+    database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: create
+    properties:
+      jakarta.persistence.schema-generation.create-source: metadata
+      jakarta.persistence.schema-generation.database.action: none
+      jakarta.persistence.schema-generation.scripts.action: create
+      jakarta.persistence.schema-generation.scripts.create-target: build/generated-schema.sql
+      hibernate.format_sql: false
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: false
 
   kakao:
     client:
@@ -95,7 +108,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info
+        include: health, info, prometheus, metrics
   endpoint:
     health:
       show-details: always
@@ -111,3 +124,24 @@ resilience4j:
         waitDuration: 2s
         enableExponentialBackoff: true
         exponential-backoff-multiplier: 2.0
+  circuitbreaker:
+    configs:
+      redisCacheDefault:
+        slidingWindowType: COUNT_BASED # 최근 호출 기준으로 통계 계산
+        slidingWindowSize: 20 # 최근 20개의 호출을 기준으로 둠
+        minimumNumberOfCalls: 10 # 비율 계산을 시작하기 위한 최소 표본 수
+
+        failureRateThreshold: 50 # 실패율이 넘어갈 경우 OPEN 상태로 전환
+
+        slowCallDurationThreshold: 100ms # 써킷 브레이커 AOP를 적용한 로직이 특정 지연시간을 넘어갔을 경우 slowCall로 기록
+        slowCallRateThreshold: 50 # slowCall비율이 일정 이상 넘어갈 경우 OPEN 상태로 전환
+
+        waitDurationInOpenState: 10s # OPEN 지속시간, 후속 요청이 Half-Open을 유발
+        permittedNumberOfCallsInHalfOpenState: 3 # Close를 위한 Half-Open 시도 수
+
+        recordExceptions:
+          - org.springframework.dao.DataAccessException # 실패를 수집하기 위한 에러 설정
+
+    instances:
+      sellerCache:
+        baseConfig: redisCacheDefault

@@ -28,7 +28,7 @@ public interface AuctionImageRepository extends JpaRepository<AuctionImage, Long
       select
             new com.windfall.api.user.dto.response.reviewlist.AuctionImageRaw(ai.auction.id, ai.image)
       from AuctionImage ai
-      where ai.id in (
+      where ai.auction.id IN(:auctionIds) AND ai.id in (
         select min(ai2.id)
         from AuctionImage ai2
         where ai2.auction.id in :auctionIds

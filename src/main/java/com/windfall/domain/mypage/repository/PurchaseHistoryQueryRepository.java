@@ -1,7 +1,9 @@
 package com.windfall.domain.mypage.repository;
 
-import com.windfall.api.mypage.dto.purchasehistory.PurchaseHistoryRaw;
-import com.windfall.api.user.dto.response.saleshistory.SalesHistoryRaw;
+import com.windfall.api.mypage.dto.purchasehistory.ChatInfoRaw;
+import com.windfall.api.mypage.dto.purchasehistory.PurchaseHistoryInfo;
+import com.windfall.api.mypage.dto.purchasehistory.ReviewInfo;
+import com.windfall.api.mypage.dto.purchasehistory.ThumbnailImageInfo;
 import com.windfall.domain.trade.entity.Trade;
 import jakarta.persistence.Tuple;
 import java.util.List;
@@ -15,18 +17,56 @@ public interface PurchaseHistoryQueryRepository extends JpaRepository<Trade, Lon
 
   @Query("""
     SELECT
-    new com.windfall.api.mypage.dto.purchasehistory.PurchaseHistoryRaw(
     a.id,
     t.id,
-    t.status)
+    t.status,
+    u.id,
+    u.nickname,
+    u.profileImageUrl,
+    a.title,
+    a.startPrice,
+    t.finalPrice,
+    ROUND(((a.startPrice - t.finalPrice) / a.startPrice) * 100),
+    t.createDate
     FROM Trade t
     JOIN Auction a ON t.auction.id = a.id
+    JOIN User u ON u.id = a.seller.id
     WHERE t.buyerId = :id AND
     t.status = COALESCE(:filter, t.status) AND
     (t.status = "PAYMENT_COMPLETED" OR t.status = "PURCHASE_CONFIRMED")
     ORDER BY t.createDate DESC
   """)
-  Slice<PurchaseHistoryRaw> getRawPurchaseHistory(@Param("id") Long userId, @Param("filter") String filter, Pageable pageable);
+  Slice<PurchaseHistoryInfo> getRawPurchaseHistory(@Param("id") Long userId, @Param("filter") String filter, Pageable pageable);
+
+  @Query("""
+  SELECT t.id, cr.id, COUNT(cm.isRead)
+  FROM Trade t
+  LEFT JOIN ChatRoom cr ON t.id = cr.trade.id
+  LEFT JOIN ChatMessage cm ON cr.id = cm.chatRoom.id
+  WHERE t.id IN (:tradeIds) AND cm.isRead = false AND cm.sender.id != :userId
+  GROUP BY t.id, cr.id, cm.isRead
+  """)
+  List<ChatInfoRaw> getChatInfo(@Param("tradeIds") List<Long> tradeId, @Param("userId") Long userId);
+
+  @Query("""
+  SELECT MIN(ai.id) FROM AuctionImage ai
+  WHERE ai.auction.id IN (:auctionIds)
+  GROUP BY ai.auction.id
+  """)
+  List<Long> getThumbnailImageIds(@Param("auctionIds") List<Long> auctionIds);
+
+  @Query("""
+    SELECT ai.auction.id, ai.image FROM AuctionImage ai
+    WHERE ai.id IN (:thumbnailIds)
+    """)
+  List<ThumbnailImageInfo> getThumbnailImageInfo(@Param("thumbnailIds") List<Long> thumbnailIds);
+
+  @Query("""
+  SELECT t.id, r.id FROM Trade t
+  JOIN Review r ON t.id = r.trade.id
+  WHERE t.id IN (:tradeIds)
+  """)
+  List<ReviewInfo> getReviewInfo(@Param("tradeIds") List<Long> tradeIds);
 
   @Query(value = """
     SELECT

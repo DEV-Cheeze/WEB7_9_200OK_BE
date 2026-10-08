@@ -1,11 +1,14 @@
 package com.windfall.api.auction.service;
 
+import com.windfall.api.auction.dto.AuctionSellerInfoCachedData;
+import com.windfall.api.auction.dto.AuctionSellerInfoData;
 import com.windfall.api.auction.dto.response.AuctionSellerInfoResponse;
 import com.windfall.api.auction.dto.response.info.BuyerReviewInfo;
 import com.windfall.api.auction.dto.response.info.SellerAuctionsInfo;
 import com.windfall.api.auction.dto.response.raw.SellerAuctionsRaw;
 import com.windfall.api.auction.dto.response.stats.SellerReviewStats;
 import com.windfall.api.user.dto.response.reviewlist.AuctionImageRaw;
+import com.windfall.domain.auction.entity.AuctionImage;
 import com.windfall.domain.auction.repository.AuctionImageRepository;
 import com.windfall.domain.auction.repository.AuctionRepository;
 import com.windfall.domain.auction.repository.AuctionSellerInfoRepository;
@@ -13,6 +16,7 @@ import com.windfall.domain.user.entity.User;
 import com.windfall.domain.user.repository.UserRepository;
 import com.windfall.global.exception.ErrorCode;
 import com.windfall.global.exception.ErrorException;
+import com.windfall.global.redis.enums.CacheDataStatus;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,19 +28,21 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuctionSellerInfoService {
 
-  private final AuctionSellerInfoRepository auctionSellerInfoRepository;
-  private final UserRepository userRepository;
-  private final AuctionImageRepository auctionImageRepository;
+  private final AuctionSellerInfoLoader auctionSellerInfoLoader;
+  private final AuctionSellerInfoCache auctionSellerInfoCache;
 
   public AuctionSellerInfoResponse getAuctionSellerInfo(Long sellerId){
-    User seller = userRepository.findById(sellerId).orElseThrow(() -> new ErrorException(ErrorCode.NOT_FOUND_USER)); //seller 검증
+    return getOrLoad(sellerId);
+  }
 
-    SellerReviewStats reviewStats = auctionSellerInfoRepository.getSellerReviewStats(sellerId); //통계 쿼리
-    List<BuyerReviewInfo> buyerReviewInfo = auctionSellerInfoRepository.getBuyerInfo(sellerId, PageRequest.of(0, 4)); //4개 뽑아오기 (구매자 리뷰 - 최신 순)
-    List<SellerAuctionsRaw> sellerAuctionsRaws = auctionSellerInfoRepository.getRawSellerAuctions(sellerId, PageRequest.of(0, 10)); //10개 뽑아오기 (판매자 경매 - 최신 순)
+  private AuctionSellerInfoResponse loadAndCache(Long sellerId, CacheDataStatus status){ //MISS거나, UNAVAILABLE일 경우
+    AuctionSellerInfoData sellerData = auctionSellerInfoLoader.loadAuctionSellerInfo(sellerId);
 
-    List<Long> auctionIds = sellerAuctionsRaws.stream().map(SellerAuctionsRaw::auctionId).toList();
-    List<AuctionImageRaw> auctionImages = auctionImageRepository.findFirstImagesProjection(auctionIds); //각 경매의 첫 번째 이미지 추출
+    User seller = sellerData.seller();
+    List<AuctionImageRaw> auctionImages = sellerData.auctionImages();
+    List<SellerAuctionsRaw> sellerAuctionsRaws = sellerData.sellerAuctionsRaws();
+    List<BuyerReviewInfo> buyerReviewInfo = sellerData.buyerReviewInfo();
+    SellerReviewStats reviewStats = sellerData.reviewStats();
 
     Map<Long, String> mappingImage = auctionImages.stream().collect(Collectors.toMap(
         AuctionImageRaw::auctionId, //매핑용 이미지 설정
@@ -44,6 +50,33 @@ public class AuctionSellerInfoService {
 
     List<SellerAuctionsInfo> sellerAuctionsInfo = sellerAuctionsRaws.stream().map(data -> SellerAuctionsInfo.of(data, mappingImage.get(data.auctionId()))).toList(); //순서대로 DTO 변환
 
-    return AuctionSellerInfoResponse.of(seller, reviewStats, buyerReviewInfo, sellerAuctionsInfo);
+    AuctionSellerInfoResponse response = AuctionSellerInfoResponse.of(seller, reviewStats, buyerReviewInfo, sellerAuctionsInfo);
+
+    if(status.equals(CacheDataStatus.MISS)) auctionSellerInfoCache.put(seller.getId(), response);
+
+    return response;
+  }
+
+  private AuctionSellerInfoResponse getOrLoad(Long sellerId){
+
+    AuctionSellerInfoCachedData data = auctionSellerInfoCache.get(sellerId);
+
+    if(data.status().equals(CacheDataStatus.HIT)){
+      return data.response();
+    }
+
+    return loadAndCache(sellerId, data.status());
   }
 }
+
+
+//Cache Miss 일 때
+//DB 조회
+//JSON 만들고
+//직렬화 해서 바이트코드로 저장
+
+
+
+//Cache Hit 일 때
+//역직렬화해서 JSON으로 변환
+

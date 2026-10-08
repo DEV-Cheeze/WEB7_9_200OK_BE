@@ -51,8 +51,8 @@ public class MyPageController implements MyPageSpecification{
       @RequestParam(required = false) String filter,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ){
-    Long userId = userDetails.getUserId();
-    SliceResponse<BasePurchaseHistory> response = purchaseHistoryService.getPurchaseHistories(userId, filter, pageable);
+    //Long userId = userDetails.getUserId();
+    SliceResponse<BasePurchaseHistory> response = purchaseHistoryService.getPurchaseHistories(102L, filter, pageable);
 
     return ApiResponse.ok("구매내역 조회에 성공하였습니다.", response);
 
@@ -65,8 +65,8 @@ public class MyPageController implements MyPageSpecification{
       @RequestParam(required = false) AuctionStatus filter,
       @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-    Long userId = userDetails.getUserId();
-    SliceResponse<BaseNotificationSetList> response = notificationSetListService.getMyNotifications(userId, filter, pageable);
+    //Long userId = userDetails.getUserId();
+    SliceResponse<BaseNotificationSetList> response = notificationSetListService.getMyNotifications(102L, filter, pageable);
     return ApiResponse.ok("알림내역 조회에 성공하였습니다.", response);
   }
 
@@ -77,8 +77,8 @@ public class MyPageController implements MyPageSpecification{
       @RequestParam(required = false) AuctionStatus filter,
       @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-    Long userId = userDetails.getUserId();
-    SliceResponse<BaseAuctionLikeList> response = auctionLikeListService.getMyAuctionLikes(userId, filter, pageable);
+    //Long userId = userDetails.getUserId();
+    SliceResponse<BaseAuctionLikeList> response = auctionLikeListService.getMyAuctionLikes(102L, filter, pageable);
 
     return ApiResponse.ok("찜 목록 조회에 성공하였습니다.", response);
   }
@@ -90,8 +90,8 @@ public class MyPageController implements MyPageSpecification{
       @RequestParam(required = false) AuctionStatus filter,
       @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-    Long userId = userDetails.getUserId();
-    SliceResponse<BaseRecentViewList> response = recentViewListService.getMyRecentViewLists(userId, filter, pageable);
+    //Long userId = userDetails.getUserId();
+    SliceResponse<BaseRecentViewList> response = recentViewListService.getMyRecentViewLists(102L, filter, pageable);
 
     return ApiResponse.ok("최근 본 경매 내역 조회에 성공하였습니다.", response);
   }
